@@ -1,0 +1,106 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;   /* không cho scroll khi canvas to */
+}
+canvas {
+  position: fixed;
+  inset: 0;              /* = top:0; right:0; bottom:0; left:0 */
+  width: 100vw;          /* luôn bằng chiều rộng màn hình */
+  height: 100vh;         /* luôn bằng chiều cao màn hình */
+  background-color: rgba(0,0,0,.2);
+}
+
+/* --- Greeting text under the heart --- */
+.greeting {
+  position: absolute;
+  bottom: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  text-align: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 🌈 Hiệu ứng chuyển màu từng chữ thật mượt */
+.greeting .shine {
+  font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  font-size: clamp(24px, 4.5vw, 56px);
+  line-height: 1.1;
+  text-transform: uppercase;
+
+  /* Gradient mượt đa sắc */
+  background: linear-gradient(
+    90deg,
+    #ff3c38,
+    #ff8a5c,
+    #ffd36b,
+    #9cfffa,
+    #c77dff,
+    #ff3c38
+  );
+  background-size: 400% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  /* Animation chuyển màu dần từng chữ */
+  animation: rainbowFlow 8s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 200, 200, 0.35))
+          drop-shadow(0 0 15px rgba(255, 150, 150, 0.25));
+}
+
+/* ✨ Hiệu ứng sóng màu lan truyền qua chữ */
+@keyframes rainbowFlow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+/* Mobile control bar */
+#mobile-controls {
+  position: fixed;
+  right: 12px;
+  bottom: 8vh;
+  display: flex;
+  gap: 8px;
+  z-index: 20;
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.25);
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+
+#mobile-controls button{
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 0;
+  font-size: 18px;
+  display: inline-grid;
+  place-items: center;
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  backdrop-filter: blur(2px);
+}
+
+#mobile-controls button:active { transform: scale(.96); }
+@media (min-width: 700px) {
+  #mobile-controls { display: none; } /* chỉ hiển thị trên màn nhỏ */
+}
+/* ensure body & html have no margin so canvas truly covers viewport */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #000; /* đen nền mặc định */
+}
+
+/* nếu bạn vẫn giữ #mobile-controls trong HTML, ẩn nó */
+#mobile-controls { display: none !important; }
