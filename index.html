@@ -1,43 +1,22 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<title>Love</title>
-<style>
-  body {
-    background: #ffdde1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
-  .heart {
-    position: relative;
-    width: 100px;
-    height: 100px;
-    background: red;
-    transform: rotate(-45deg);
-    animation: beat 1s infinite;
-  }
-  .heart::before,
-  .heart::after {
-    content: '';
-    position: absolute;
-    width: 100px;
-    height: 100px;
-    background: red;
-    border-radius: 50%;
-  }
-  .heart::before { top: -50px; left: 0; }
-  .heart::after { left: 50px; top: 0; }
+  <meta charset="UTF-8">
+  <title>CodePen - Heart</title>
 
-  @keyframes beat {
-    0%, 100% { transform: scale(1) rotate(-45deg); }
-    50% { transform: scale(1.2) rotate(-45deg); }
-  }
-</style>
+  <!-- GIÚP HIỂN THỊ ĐÚNG TRÊN ĐIỆN THOẠI -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="./style.css">
 </head>
+
+
 <body>
-  <div class="heart"></div>
+  <canvas id="heart"></canvas>
+  <div class="greeting">
+    <span class="shine">Chúc cô Hà 20/11 vui vẻ</span>
+  </div>
+
+  <script src="./script.js"></script>
 </body>
 </html>
