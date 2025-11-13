@@ -1,4 +1,3 @@
-
 // script.js - mobile improvements, NO solid heart layer (particles-only heart + halo)
 window.requestAnimationFrame =
     window.__requestAnimationFrame ||
@@ -128,26 +127,53 @@ var init = function () {
         }
     }
 
-    // STARS (background)
+    // STARS (background) – sao nhỏ, thưa vừa phải
     var stars = [];
     function createStars() {
         stars = [];
         var area = Math.max(1, width * height);
-        var num = Math.round(area / 40000);
-        num = Math.min(80, Math.max(25, num));
+
+        // Ít sao hơn một chút, tùy theo kích thước màn
+        var num = Math.round(area / 50000);
+        num = Math.min(60, Math.max(28, num)); // không quá ít cũng không quá nhiều
+
         var rand = Math.random;
         for (var i = 0; i < num; i++) {
             var sx = Math.round(rand() * width);
             var sy = Math.round(rand() * height);
-            var r = 0.5 + rand() * 1.3;
-            var a = 0.45 + rand() * 0.5;
-            var tw = rand() * 0.02;
-            stars.push({ x: sx, y: sy, r: r, a: a, tw: tw, phase: rand() * Math.PI * 2 });
+
+            // Sao nhỏ xíu
+            var r = 0.35 + rand() * 0.8;
+
+            // Ánh sáng dịu, không chói
+            var a = 0.28 + rand() * 0.4;
+
+            // Nháy nhẹ nhàng
+            var tw = 0.005 + rand() * 0.018;
+
+            stars.push({
+                x: sx,
+                y: sy,
+                r: r,
+                a: a,
+                tw: tw,
+                phase: rand() * Math.PI * 2
+            });
         }
     }
+
     function drawStars(alphaMultiplier) {
         alphaMultiplier = (alphaMultiplier === undefined) ? 1 : alphaMultiplier;
         for (var i = 0; i < stars.length; i++) {
+            // tích hợp gia tốc do shockwave (nếu có)
+            if (stars[i].kick) {
+                stars[i].x += (stars[i].vx || 0);
+                stars[i].y += (stars[i].vy || 0);
+                stars[i].vx *= 0.985;
+                stars[i].vy *= 0.985;
+                // giảm dần sau khi ra xa
+                if (Math.abs(stars[i].vx) + Math.abs(stars[i].vy) < 0.05) stars[i].kick = 0;
+            }
             var s = stars[i];
             s.phase += s.tw;
             var alpha = s.a * (0.85 + 0.15 * Math.sin(s.phase)) * alphaMultiplier;
@@ -217,6 +243,144 @@ var init = function () {
         ringSpeed: mobile ? 1.8 : 2.6, // pixels per frame base (will scale)
         ringWidth: mobile ? 2.2 : 3.2
     };
+    
+    // ---------------- SHOCKWAVE (visible ring + impulse + erase) ----------------
+    // Sóng tròn phát từ tâm, có ring phát sáng rõ ràng + lực đẩy mạnh ra ngoài
+    var shockwave = {
+        active: false,
+        start: 0,
+        duration: 900,   // lâu hơn để thấy rõ
+        maxR: 0,
+        pushed: false
+    };
+    function startShockwave(ts) {
+        shockwave.active = true;
+        shockwave.pushed = false;
+        shockwave.start = ts || performance.now();
+        shockwave.maxR = Math.sqrt(width*width + height*height) * 1.1;
+    }
+    function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+
+    function drawShockwave(now) {
+        if (!shockwave.active) return;
+        var elapsed = (now || performance.now()) - shockwave.start;
+        var t = Math.min(1, elapsed / shockwave.duration);
+        var e = easeOutCubic(t);
+        var cx = width/2;
+        var cy = height/2 - Math.min(width, height) * (mobile ? 0.08 : 0.05);
+        var r = 24 + (shockwave.maxR - 24) * e;
+
+        // 1) Bloom flash đầu sóng để "nổ sáng"
+        if (elapsed < 240) {
+            var bt = elapsed / 240;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            var bg = ctx.createRadialGradient(cx, cy, 2, cx, cy, Math.max(80, Math.min(width, height)*0.22));
+            bg.addColorStop(0, 'rgba(255,255,255,' + (0.9*(1-bt)) + ')');
+            bg.addColorStop(0.45, 'rgba(255,190,220,' + (0.55*(1-bt)) + ')');
+            bg.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = bg;
+            ctx.beginPath();
+            ctx.arc(cx, cy, Math.max(60, r*0.6), 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 2) Visible shock ring (double rim)
+        var thickness = Math.max(2, Math.min(width, height)*0.014 * (1.2 - e));
+        var glow = thickness * 4;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineWidth = thickness;
+        ctx.shadowBlur = glow;
+        ctx.shadowColor = 'rgba(255,180,220,0.95)';
+        var grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+        grad.addColorStop(0.0, 'rgba(255,170,210,'+(0.85*(1-t))+')');
+        grad.addColorStop(0.5, 'rgba(255,255,255,'+(0.85*(1-t))+')');
+        grad.addColorStop(1.0, 'rgba(255,170,210,'+(0.85*(1-t))+')');
+        ctx.strokeStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI*2);
+        ctx.stroke();
+        // trailing faint rim
+        ctx.lineWidth = Math.max(1, thickness*0.55);
+        ctx.shadowBlur = glow*0.6;
+        ctx.shadowColor = 'rgba(255,140,200,0.8)';
+        ctx.strokeStyle = 'rgba(255,140,200,'+(0.55*(1-t))+')';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - thickness*1.3, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.restore();
+
+        // 3) Impulse: đẩy mọi thứ ra ngoài 1 lần
+        if (!shockwave.pushed && t > 0.06) {
+            shockwave.pushed = true;
+            var pushBase = Math.min(width, height) * 0.18;
+
+            // particles (heart)
+            try {
+                for (var i = 0; i < particles.length; i++) {
+                    var u = particles[i];
+                    var px = u.trace && u.trace[0] ? u.trace[0].x : (u.x || cx);
+                    var py = u.trace && u.trace[0] ? u.trace[0].y : (u.y || cy);
+                    var dx = px - cx, dy = py - cy;
+                    var len = Math.sqrt(dx*dx + dy*dy) || 1;
+                    var mag = pushBase * (0.7 + Math.random()*0.7);
+                    u.vx = (u.vx || 0) + (dx/len) * mag;
+                    u.vy = (u.vy || 0) + (dy/len) * mag;
+                    if (u.trace && u.trace.length) {
+                        for (var kk = 1; kk < u.trace.length; kk++) {
+                            u.trace[kk].x += (dx/len) * (mag * 0.03 * (kk/u.trace.length));
+                            u.trace[kk].y += (dy/len) * (mag * 0.03 * (kk/u.trace.length));
+                        }
+                    }
+                }
+            } catch(e) {}
+
+            // halo rings: tăng tốc + thêm ring lớn
+            try {
+                for (i = 0; i < halo.rings.length; i++) {
+                    halo.rings[i].speed = (halo.rings[i].speed || 1) * 2.4;
+                    halo.rings[i].alpha = Math.min(1, (halo.rings[i].alpha || 1) * 1.25);
+                }
+                halo.rings.push({
+                    x: cx, y: cy,
+                    r: Math.max(12, Math.min(width, height)*0.03),
+                    maxR: shockwave.maxR * 1.05,
+                    width: Math.max(6, Math.min(width, height) * 0.06),
+                    alpha: 0.95,
+                    speed: Math.min(width, height) * 0.13,
+                    life: 0
+                });
+            } catch(e) {}
+
+
+            // intro dust: tăng vận tốc hiện có
+            try {
+                for (i = 0; i < introDust.length; i++) {
+                    var d = introDust[i];
+                    var dxx = d.x - cx, dyy = d.y - cy;
+                    var ld = Math.sqrt(dxx*dxx + dyy*dyy) || 1;
+                    var md = (pushBase*0.5) * (0.7 + Math.random()*0.7);
+                    d.vx += (dxx/ld) * md;
+                    d.vy += (dyy/ld) * md;
+                }
+            } catch(e) {}
+        }
+
+        // 4) Để "quét sạch" vùng sáng: erase bằng donut mềm tại viền sóng
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + thickness*1.4, 0, Math.PI*2);
+        ctx.arc(cx, cy, r - thickness*1.4, 0, Math.PI*2, true); // tạo vành khuyên
+        ctx.fillStyle = 'rgba(0,0,0,' + (0.28 + 0.4*(1-e)) + ')';
+        ctx.fill();
+        ctx.restore();
+
+        if (t >= 1) shockwave.active = false;
+    }
     function createHalo() {
         halo.rings = [];
         halo.lastSpawn = 0;
@@ -282,7 +446,10 @@ var init = function () {
         ctx.globalCompositeOperation = 'source-over';
     }
 
+
     // Timeline states
+
+
     var introStart = null;
     var introDuration = 3300; // intro full open (ms)
     var crossfadeDuration = 900; // smooth crossfade (ms)
@@ -325,7 +492,8 @@ var init = function () {
         // --- INTRO STAGE (grow) ---
         if (introPlaying && !crossfading) {
             var p = Math.min(1, elapsedIntro / introDuration);
-            var starAlpha = Math.pow(p, 0.78);
+
+    var starAlpha = Math.pow(p, 0.78);
             drawStars(starAlpha);
             drawIntroDust(p);
 
@@ -351,8 +519,13 @@ var init = function () {
                 // start crossfade
                 crossfading = true;
                 crossStart = ts || performance.now();
+
+                // create particles/have halo, but start shockwave FIRST so it clears intro visuals
                 createParticles();
                 halo.lastSpawn = 0;
+
+                // start the shockwave from the heart center so it wipes intro highlights
+                startShockwave(crossStart);
             }
 
             window.requestAnimationFrame(loop, canvas);
@@ -370,7 +543,7 @@ var init = function () {
             // soft overlay
             ctx.fillStyle = "rgba(0,0,0," + (0.12 * t) + ")";
             ctx.fillRect(0, 0, width, height);
-
+            
             // compute heartAlpha for all heart-related drawing
             var heartAlpha = t;
             // small pulse so heart breathes while appearing
@@ -415,6 +588,8 @@ var init = function () {
 
             // halo rings spawn and draw with heartAlpha
             updateHalo(dt, heartAlpha);
+
+            drawShockwave(now);
 
             if (t >= 1) {
                 crossfading = false;
@@ -478,8 +653,7 @@ var init = function () {
 
     // init everything
     resizeCanvas();
-
-    // start loop
+// start loop
     lastTS = performance.now();
     window.requestAnimationFrame(loop, canvas);
 };
