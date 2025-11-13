@@ -243,13 +243,67 @@ var init = function () {
         ringSpeed: mobile ? 1.8 : 2.6, // pixels per frame base (will scale)
         ringWidth: mobile ? 2.2 : 3.2
     };
-    
+// ---------------- CONVERGE WAVE (hội tụ sóng trước khi nổ) ----------------
+var converge = {
+  active: false,
+  start: 0,
+  duration: 2000, // 2s cho sóng hội tụ chậm rãi
+  rings: []
+};
+
+function startConverge(ts) {
+  converge.active = true;
+  converge.start = ts || performance.now();
+  converge.rings = [];
+  var cx = width/2;
+  var cy = height/2 - Math.min(width, height) * (mobile ? 0.08 : 0.05);
+  var baseR = Math.min(width, height) * 0.6;
+
+  for (var i = 0; i < 8; i++) {
+    converge.rings.push({
+      r: baseR * (0.3 + i * 0.08),
+      alpha: 0.15 + 0.1 * i,
+      width: Math.max(1.5, Math.min(width, height)*0.003 * (1 + i*0.2))
+    });
+  }
+}
+
+function drawConverge(now) {
+  if (!converge.active) return false;
+  var elapsed = (now || performance.now()) - converge.start;
+  var t = Math.min(1, elapsed / converge.duration);
+  var cx = width/2;
+  var cy = height/2 - Math.min(width, height) * (mobile ? 0.08 : 0.05);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (var i = 0; i < converge.rings.length; i++) {
+    var R = converge.rings[i];
+    var newR = R.r * (1 - 0.9 * t); // hội tụ dần vào tâm
+    var fade = Math.pow(1 - t, 0.8);
+    var bright = 1 - Math.pow(Math.abs(0.5 - t), 2) * 2;
+    ctx.lineWidth = R.width;
+    ctx.globalAlpha = Math.max(0, R.alpha * fade * (0.7 + 0.3 * bright));
+    ctx.strokeStyle = 'rgba(255,200,240,' + (0.6 + 0.4 * bright) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy, newR, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  if (t >= 1) {
+    converge.active = false;
+    startShockwave(now); // khi hội tụ xong, bật shockwave ra ngoài
+  }
+  return true;
+}
+
     // ---------------- SHOCKWAVE (visible ring + impulse + erase) ----------------
     // Sóng tròn phát từ tâm, có ring phát sáng rõ ràng + lực đẩy mạnh ra ngoài
     var shockwave = {
         active: false,
         start: 0,
-        duration: 900,   // lâu hơn để thấy rõ
+        duration: 3000,   // lâu hơn để thấy rõ
         maxR: 0,
         pushed: false
     };
@@ -525,7 +579,8 @@ var init = function () {
                 halo.lastSpawn = 0;
 
                 // start the shockwave from the heart center so it wipes intro highlights
-                startShockwave(crossStart);
+                startConverge(crossStart);
+
             }
 
             window.requestAnimationFrame(loop, canvas);
@@ -588,7 +643,7 @@ var init = function () {
 
             // halo rings spawn and draw with heartAlpha
             updateHalo(dt, heartAlpha);
-
+            
             drawShockwave(now);
 
             if (t >= 1) {
