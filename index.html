@@ -1,22 +1,103 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>CodePen - Heart</title>
-
-  <!-- GIÚP HIỂN THỊ ĐÚNG TRÊN ĐIỆN THOẠI -->
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <link rel="stylesheet" href="./style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Heart Greeting</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
-
 <body>
-  <canvas id="heart"></canvas>
-  <div class="greeting">
-    <span class="shine">Chúc cô Hà 20/11 vui vẻ</span>
+  <!-- Canvas trái tim (giữ nguyên) -->
+  <canvas id="heart" aria-hidden="true"></canvas>
+
+  <!-- Chữ chúc: sẽ được đặt NGAY BÊN DƯỚI trái tim -->
+  <div
+    id="greeting"
+    class="greeting"
+    role="note"
+    aria-live="polite"
+    aria-atomic="true"
+  >
+    <div class="shine"></div>
   </div>
 
-  <script src="./script.js"></script>
+  <!-- Script trái tim gốc -->
+  <script src="script.js"></script>
+
+  <!-- Script cho chữ: chỉ lo phần text & vị trí dưới trái tim -->
+  <script>
+    (function () {
+      const text = "chúc cô Hà 20/11 vui vẻ";
+
+      const root = document.getElementById("greeting");
+      const shine = root ? root.querySelector(".shine") : null;
+      if (!root || !shine) return;
+
+      // Gán nội dung chữ (1 dòng)
+      shine.textContent = text;
+
+      // Tính vị trí NGAY BÊN DƯỚI trái tim
+      function positionUnderHeart() {
+        const vw = Math.max(
+          1,
+          window.innerWidth || document.documentElement.clientWidth
+        );
+        const vh = Math.max(
+          1,
+          window.innerHeight || document.documentElement.clientHeight
+        );
+
+        const ua =
+          (navigator && (navigator.userAgent || navigator.vendor)) || "";
+        const isDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+          ua.toLowerCase()
+        );
+
+        // Tọa độ tâm trái tim (đồng bộ với script.js)
+        const centerYOffsetFactor = isDevice ? 0.08 : 0.05;
+        const cx = Math.round(vw / 2);
+        const cy = Math.round(vh / 2 - Math.min(vw, vh) * centerYOffsetFactor);
+
+        const margin = 16; // cách mép dưới 1 chút
+        const estimatedHeight = 80;
+
+        // Offset từ tâm trái tim xuống dưới để chữ nằm dưới đáy tim
+        const baseOffset = Math.round(
+          Math.min(vw, vh) * (isDevice ? 0.75 : 0.4)
+        );
+
+        let top = cy + baseOffset;
+
+        // Giữ chữ luôn trong khung hình
+        if (top > vh - estimatedHeight - margin)
+          top = vh - estimatedHeight - margin;
+        if (top < margin) top = margin;
+
+        root.style.left = cx + "px";
+        root.style.top = top + "px";
+        root.style.transform = "translate(-50%, 0)";
+      }
+
+      function onChange() {
+        clearTimeout(onChange._t);
+        onChange._t = setTimeout(positionUnderHeart, 80);
+      }
+
+      function init() {
+        positionUnderHeart();
+        // Re-calc sau khi layout ổn định
+        setTimeout(positionUnderHeart, 120);
+      }
+
+      window.addEventListener("resize", onChange);
+      window.addEventListener("orientationchange", onChange);
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+      } else {
+        init();
+      }
+    })();
+  </script>
 </body>
 </html>
